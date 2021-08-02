@@ -1,7 +1,7 @@
 # FPGA Image Enhance
 
-# Directory Description:
-+ rlt: RTL Logic
+### Directories:
++ rtl: RTL Logic
 + tb : Testbench
 + sim: Modelsim and verification files
 
