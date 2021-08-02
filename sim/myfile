@@ -1,0 +1,3 @@
+add list -decimal *
+do stim.do
+write list counter.lst
