@@ -1,0 +1,6 @@
+# Ignore everything in sim file
+sim/*
+
+# Except the following:
+sim/myfile
+sim/stim.do
