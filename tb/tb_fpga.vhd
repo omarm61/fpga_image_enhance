@@ -19,6 +19,10 @@ architecture tb of tb_fpga is
     constant C_IMAGE_WIDTH  : integer := 128;
     constant C_IMAGE_HEIGHT : integer := 144;
 
+    -- Files
+    constant C_FILE_VIDEO_IN  : string := "video_in_sim.txt";
+    constant C_FILE_VIDEO_OUT : string := "video_out_sim.txt";
+
     -- Signals
     signal enable : std_logic;
     signal counter: std_logic_vector (C_COUNTER_SIZE-1 downto 0);
@@ -54,6 +58,7 @@ architecture tb of tb_fpga is
     type t_read_state is (sIDLE, sREAD_LINE, sSEND_SOF, sSEND_LINE, sDONE, sERROR);
     signal state_rfile : t_read_state;
 
+    -- Function: Convert CHAR to STD_LOGIC_VECTOR
     function conv_char_to_logic_vector(char0 : character; char1 : character)
     return std_logic_vector is
 
@@ -67,6 +72,14 @@ architecture tb of tb_fpga is
         return ret;
     end function;
 
+    -- Function: Convert STD_LOGIC_VECTOR to CHAR
+    function conv_std_logic_vector_to_char(byte : std_logic_vector(7 downto 0)) return character is
+        variable temp : integer := 0;
+    begin
+        -- Convert byte to integer
+        temp := to_integer(unsigned(byte));
+        return CHARACTER'VAL(temp);
+    end function;
 
     -- Components
     -- Counter
@@ -130,11 +143,12 @@ begin
     end process;
 
 
-    -- Video stream
+    ------------------------------------------
+    -- AXI-Stream: IN: Read from file
+    ------------------------------------------
     file_read : process is
         variable line_v : line;
         file read_file : text;
-        --file write_file : text;
         variable test : integer;
         variable slv_v : std_logic_vector(4 - 1 downto 0);
         variable char_byte0 : character;
@@ -151,11 +165,11 @@ begin
         m_axis_tuser_sof   <= '0';
         m_axis_tlast       <= '0';
         s_axis_tready      <= '0';
-        v_pixel_counter := 0;
-        v_line_counter := 0;
+        v_pixel_counter    := 0;
+        v_line_counter     := 0;
 
         -- Open File
-        file_open(read_file, "../tb/foreman_128x144.yuv", read_mode);
+        file_open(read_file, C_FILE_VIDEO_IN, read_mode);
         --file_open(write_file, "target.txt", write_mode);
             --while not endfile(read_file) loop
         state_rfile <= sIDLE;
@@ -192,9 +206,6 @@ begin
                         -- Error, end of file was reached before reading the full image
                         state_rfile <= sERROR;
                     end if;
-                    -- Increment pixel counter
-                    v_pixel_counter := v_pixel_counter + 1;
-                    v_pixel_index   <= v_pixel_counter;
 
                 when sSEND_SOF =>
                     -- Wait for Tready
@@ -204,8 +215,12 @@ begin
                         read(line_v, char_byte1);
                         -- Set Start of frame signal
                         m_axis_tuser_sof <= '1';
+                        m_axis_tlast     <= '0';
                         m_axis_tvalid    <= '1';
-                        m_axis_tdata     <= conv_char_to_logic_vector(char_byte0, char_byte1);
+                        m_axis_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
+                        -- Increment counter
+                        v_pixel_counter := v_pixel_counter + 1;
+                        v_pixel_index   <= v_pixel_counter;
                         -- Next State
                         state_rfile <= sSEND_LINE;
                         v_line_length <= line_v'length;
@@ -222,15 +237,15 @@ begin
                             read(line_v, char_byte1);
                             m_axis_tlast  <= '1';
                             m_axis_tvalid <= '1';
-                            m_axis_tdata     <= conv_char_to_logic_vector(char_byte0, char_byte1);
+                            m_axis_tdata  <= conv_char_to_logic_vector(char_byte1, char_byte0);
                             v_line_length <= line_v'length;
                             -- Reset pixel counter
                             v_pixel_counter := 0;
                             v_pixel_index <= v_pixel_counter;
                             -- increment line counter
                             if (v_line_counter = C_IMAGE_HEIGHT - 1) then
-                                -- Read done
-                                state_rfile <= sDONE;
+                                -- Send next Image
+                                state_rfile <= sSEND_SOF;
                                 -- Frame Counter
                                 v_frame_counter := v_frame_counter + 1;
                                 v_frame_index  <= v_frame_counter;
@@ -250,7 +265,7 @@ begin
                             read(line_v, char_byte1);
                             m_axis_tvalid <= '1';
                             m_axis_tlast <= '0';
-                            m_axis_tdata     <= conv_char_to_logic_vector(char_byte0, char_byte1);
+                            m_axis_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
                             v_line_length <= line_v'length;
                             -- Increment Pixel counter
                             v_pixel_counter := v_pixel_counter + 1;
@@ -283,61 +298,53 @@ begin
             end case;
         end loop;
         file_close(read_file);
-        --read(line_v, slv_v);
-        --test := character'pos(v_space);
-            --report "slv_v: " & to_hstring(slv_v);
-        --m_axis_tdata  <= std_logic_vector(to_unsigned(test,8)) & x"00";
-        --m_axis_tvalid <= '1';
-        --if (i_sim_clk'event and i_sim_clk = '1') then
-        --    m_axis_tvalid <= '0';
-        --end if;
         report "File Read Done";
-        --hwrite(line_v, slv_v);
-        --writeline(write_file, line_v);
-        --end loop;
-        --file_close(write_file);
         wait;
     end process;
 
-    --axi_master : process (i_sim_clk, i_sim_aresetn)
-    --    -- File control and master stream
-    --    type t_integer_array is array(integer range<>) of integer;
-    --    file fvideo_in              : text open read_mode is "foreman_128x144.yuv";
-    --    variable row                : line;
-    --    variable v_data_read        : t_integer_array(1 to C_IMAGE_WIDTH);
-    --    variable v_data_row_counter : integer := 0;
-    --begin
-    --    if (i_sim_aresetn = '0') then
-    --        v_data_row_counter := 1;
-    --        m_axis_tdata       <= (others => '0');
-    --        m_axis_tvalid      <= '0';
-    --        m_axis_tuser_sof   <= '0';
-    --        s_axis_tready      <= '0';
-    --    elsif (i_sim_clk'event and i_sim_clk = '1') then
-    --        if (enable = '1') then
-    --            s_axis_tready <= '1';
-    --            -- Read from input file
-    --            if (not endfile(fvideo_in) and v_data_row_counter < 2) then
-    --                v_data_row_counter := v_data_row_counter + 1;
-    --                readline(fvideo_in, row);
-    --                -- Read integer number
-    --                for kk in 1 to C_IMAGE_WIDTH loop
-    --                    read(row, v_data_read(kk));
-    --                end loop;
-    --                if (m_axis_tready = '1') then
-    --                    m_axis_tdata <= std_logic_vector(to_unsigned(v_data_read(1), m_axis_tdata'length));
-    --                    m_axis_tvalid <= '1';
-    --                end if;
-    --            else
-    --                m_axis_tvalid <= '0';
-    --            end if;
-    --        else
-    --            s_axis_tready <= '0';
-    --            m_axis_tvalid <= '0';
-    --        end if;
-    --    end if;
-
-    --end process;
+    ------------------------------------------
+    -- AXI-Stream: OUT: Wirte to file
+    ------------------------------------------
+    file_write : process is
+        file write_file : text;
+        variable v_oline : line;
+        variable v_frame_counter : integer;
+        variable v_pixel_counter : integer;
+    begin
+        s_axis_tready <= '1';
+        v_frame_counter := 0;
+        v_pixel_counter := 0;
+        -- Open File
+        file_open(write_file, C_FILE_VIDEO_OUT, write_mode);
+        loop
+            -- Wait for clock cycle
+            wait until (i_sim_clk'event and i_sim_clk = '1');
+            if (s_axis_tvalid = '1' and s_axis_tready = '1') then
+                if (s_axis_tdata(7 downto 0) = x"0A") then
+                    write(v_oline, conv_std_logic_vector_to_char(x"0B"));
+                else
+                    write(v_oline, conv_std_logic_vector_to_char(s_axis_tdata(7 downto 0)));
+                end if;
+                if (s_axis_tdata(15 downto 8) = x"0A") then
+                    write(v_oline, conv_std_logic_vector_to_char(x"0B"));
+                else
+                    write(v_oline, conv_std_logic_vector_to_char(s_axis_tdata(15 downto 8)));
+                end if;
+                -- Pixel Counter
+                if (v_pixel_counter = 127) then
+                    v_pixel_counter := 0;
+                    writeline(write_file, v_oline);
+                else
+                    v_pixel_counter := v_pixel_counter + 1;
+                end if;
+                --if (stop_stream = '1') then
+                --    exit;
+                --end if
+            end if;
+        end loop;
+        report "File save done";
+        file_close(write_file);
+    end process;
 
     u0 :counter_add
     port map (

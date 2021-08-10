@@ -1,10 +1,3 @@
-# Copyright 1991-2016 Mentor Graphics Corporation
-#
-# All Rights Reserved.
-#
-# THIS WORK CONTAINS TRADE SECRET AND PROPRIETARY INFORMATION WHICH IS THE PROPERTY OF
-# MENTOR GRAPHICS CORPORATION OR ITS LICENSORS AND IS SUBJECT TO LICENSE TERMS.
-
 
 #-- set default radix to symbolic
 #radix symbolic
@@ -15,8 +8,14 @@ radix hex
 # Functions
 proc proc_wait_for_counter {signal count} {
     puts "Wait for signal"
+        set temp_prev 0
         while {[expr [examine -decimal $signal] != $count]} {
             run 100 ns
+                set temp [examine -decimal $signal]
+                if {![expr $temp % 5] && $temp != $temp_prev} {
+                    puts "$signal value: [examine -decimal $signal]"
+                    set temp_prev $temp
+                }
         }
     puts "Counter: Counting to 100 failed. COUNT is [examine -decimal $signal]."
 }
@@ -36,11 +35,11 @@ proc verify_test {err msg} {
     }
 }
 
-# Reset Signals
-force  w_reg_matrix_select 0
-force  w_reg_grayscale_en  0
+# Configure module
+force  w_reg_matrix_select 1
+force  w_reg_grayscale_en  1
 force  w_reg_kernel_bypass 0
-force  w_reg_kernel_gain   16#225
+force  w_reg_kernel_gain   16#4
 
 # setup an oscillator on the CLK input
 force i_sim_clk 1 50 ns -r 100 ns
@@ -77,7 +76,7 @@ if {[expr [examine -decimal counter] != 100]} {
 # ---------------------------------------
 # TEST: Wait for frame counter to reach 1
 # ---------------------------------------
-proc_wait_for_counter v_frame_index 1
+proc_wait_for_counter v_frame_index 100
 verify_test 0 "Video Input"
 
 run 10000

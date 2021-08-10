@@ -1,7 +1,8 @@
 
 
 # Simulation Direcotry
-DIR="sim"
+SIM_DIR="sim"
+TB_DIR="tb"
 
 # RTL directories
 INCLUDE_RTL= ../rtl/counter_add.vhd \
@@ -42,34 +43,57 @@ endif
 # Targets
 #==================
 
-setup :
-	cd ${DIR}; \
+.DEFAULT_GOAL := help
+.PHONY: help
+
+
+## setup: Copies xilinx simulation library and configure simulation directory
+setup : stim
+	cd ${SIM_DIR}; \
 	cp ${XILINX_LIB}/modelsim.ini .; \
 	vlib work; \
 	vmap work work
 
+## compile: compiles the RTL code (NOTE: The files are recompiled before every simulation run)
 compile :
-	cd ${DIR}; \
+	cd ${SIM_DIR}; \
 	vcom ${INCLUDE_RTL} ${INCLUDE_TB}
 
+## sim: run simulation
 sim : compile
-	cd ${DIR}; \
+	cd ${SIM_DIR}; \
 	vsim ${VSIM_OPT} tb_fpga
 
-sim_gui : compile
-	cd ${DIR}; \
-	vsim -do myfile -wlf output.wlf tb_fpga
-
+## waves: Open wave files
 waves :
-	cd ${DIR}; \
+	cd ${SIM_DIR}; \
 	vsim -view output.wlf -do ${WAVE_OPT}
 
+## stim: generate stimulus input video file
+stim :
+	cd ${TB_DIR}; \
+	python2 generate_stimulus.py -o ../${SIM_DIR}/video_in_sim.txt
+
+## conv: generate yuv file
+conv :
+	cd ${SIM_DIR}; \
+	rm video_out.yuv; \
+	cat ./video_out_sim.txt | tr -d "\n" >> ./video_out.yuv
+
+## play: play the generated video
+play : conv
+	cd ${SIM_DIR}; \
+	ffplay -f rawvideo -pixel_format yuyv422  -video_size 128x144 video_out.yuv
+
+## clean: remove all generated files in /sim directory
 clean :
-	cd ${DIR}; \
-	rm -rf work/;\
-	rm -rf transcript;\
-	rm -rf counter.lst;\
-	rm -rf modelsim.ini;\
-	rm -rf output.wlf
+	cd ${SIM_DIR}; \
+	rm -rf !("myfile"|"stim.do");
 
-
+help: makefile
+	@echo "------------------------------------------------------------\n"
+	@echo "Make Options:"
+	@echo ""
+	@sed -n 's/^##/ -/p' $<
+	@echo ""
+	@echo "------------------------------------------------------------\n"
