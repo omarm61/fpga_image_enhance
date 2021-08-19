@@ -20,6 +20,7 @@ architecture tb of tb_fpga is
     constant C_IMAGE_HEIGHT : integer := 144;
 
     -- Files
+    constant C_GAMMA_LUT      : string := "gamma_lut.mif";
     constant C_FILE_VIDEO_IN  : string := "video_in_sim.txt";
     constant C_FILE_VIDEO_OUT : string := "video_out_sim.txt";
 
@@ -28,19 +29,26 @@ architecture tb of tb_fpga is
     signal counter: std_logic_vector (C_COUNTER_SIZE-1 downto 0);
 
     -- AXI-Stream
-    -- Master
-    signal m_axis_tdata     : std_logic_vector (15 downto 0);
-    signal m_axis_tvalid    : std_logic;
-    signal m_axis_tready    : std_logic;
-    signal m_axis_tuser_sof : std_logic;
-    signal m_axis_tlast     : std_logic;
+    -- SIM Input File -> Gamma LUT
+    signal r_axis_sim_gamma_tdata     : std_logic_vector (15 downto 0);
+    signal r_axis_sim_gamma_tvalid    : std_logic;
+    signal w_axis_sim_gamma_tready    : std_logic;
+    signal r_axis_sim_gamma_tuser_sof : std_logic;
+    signal r_axis_sim_gamma_tlast     : std_logic;
 
-    -- Slave
-    signal s_axis_tdata     : std_logic_vector (15 downto 0);
-    signal s_axis_tvalid    : std_logic;
-    signal s_axis_tready    : std_logic;
-    signal s_axis_tuser_sof : std_logic;
-    signal s_axis_tlast     : std_logic;
+    -- Gamma LUT -> Edge Enhance
+    signal w_axis_gamma_edge_tdata    : std_logic_vector  (15 downto 0);
+    signal w_axis_gamma_edge_tvalid   : std_logic;
+    signal w_axis_gamma_edge_tready   : std_logic;
+    signal w_axis_gamma_edge_tuser_sof: std_logic;
+    signal w_axis_gamma_edge_tlast    : std_logic;
+
+    -- Edge Enhance -> SIM Output File
+    signal w_axis_edge_sim_tdata     : std_logic_vector (15 downto 0);
+    signal w_axis_edge_sim_tvalid    : std_logic;
+    signal r_axis_edge_sim_tready    : std_logic;
+    signal w_axis_edge_sim_tuser_sof : std_logic;
+    signal w_axis_edge_sim_tlast     : std_logic;
 
     -- Control Registers (NOTE: Currently these registers are controlled by the TCL script)
     signal w_reg_matrix_select : std_logic;
@@ -53,6 +61,13 @@ architecture tb of tb_fpga is
     signal v_line_index  : integer;
     signal v_line_length : integer;
     signal v_frame_index : integer;
+
+    -- LUT write/read access
+    signal r_lut_wdata : std_logic_vector (7 downto 0);
+    signal r_lut_rdata : std_logic_vector (7 downto 0);
+    signal r_lut_addr  : std_logic_vector (10 downto 0);
+    signal r_lut_enable: std_logic;
+    signal r_lut_wren  : std_logic;
 
     -- Read file state machine
     type t_read_state is (sIDLE, sREAD_LINE, sSEND_SOF, sSEND_LINE, sDONE, sERROR);
@@ -93,6 +108,38 @@ architecture tb of tb_fpga is
             -- Output Count
             o_count   : out std_logic_vector (7 downto 0)
         );
+    end component;
+
+    --Gamma Correction
+    component gamma_lut is
+    generic (
+        C_INIT_FILE   : string  := "NONE";
+        C_PIXEL_WIDTH : integer := 16;
+        C_GAMMA_WIDTH : integer := 8
+    );
+    port (
+        -- Clock/Reset
+        s_axis_aclk    : in std_logic;
+        s_axis_aresetn : in std_logic;
+        -- Configure LUT
+        i_lut_wdata      : in  std_logic_vector (C_GAMMA_WIDTH - 1 downto 0);
+        o_lut_rdata      : out std_logic_vector (C_GAMMA_WIDTH - 1 downto 0);
+        i_lut_addr       : in  std_logic_vector (10 downto 0);
+        i_lut_enable     : in  std_logic;
+        i_lut_wren       : in  std_logic;
+        -- Video In - YUV422
+        s_axis_tdata     : in  std_logic_vector (C_PIXEL_WIDTH - 1 downto 0);
+        s_axis_tvalid    : in  std_logic;
+        s_axis_tready    : out std_logic;
+        s_axis_tuser_sof : in  std_logic;
+        s_axis_tlast     : in  std_Logic;
+        -- Video out - YUV422
+        m_axis_tdata     : out std_logic_vector (C_PIXEL_WIDTH - 1 downto 0);
+        m_axis_tvalid    : out std_logic;
+        m_axis_tready    : in  std_logic;
+        m_axis_tuser_sof : out std_logic;
+        m_axis_tlast     : out std_Logic
+    );
     end component;
 
     -- Edge Enhancements
@@ -160,13 +207,19 @@ begin
 
     begin
         -- Reset Signals
-        m_axis_tdata       <= (others => '0');
-        m_axis_tvalid      <= '0';
-        m_axis_tuser_sof   <= '0';
-        m_axis_tlast       <= '0';
-        s_axis_tready      <= '0';
+        r_axis_sim_gamma_tdata       <= (others => '0');
+        r_axis_sim_gamma_tvalid      <= '0';
+        r_axis_sim_gamma_tuser_sof   <= '0';
+        r_axis_sim_gamma_tlast       <= '0';
+        r_axis_edge_sim_tready      <= '0';
         v_pixel_counter    := 0;
         v_line_counter     := 0;
+
+        r_lut_wdata   <= x"00";
+        r_lut_rdata   <= x"00";
+        r_lut_addr    <= (others => '0');
+        r_lut_enable  <= '0';
+        r_lut_wren    <= '0';
 
         -- Open File
         file_open(read_file, C_FILE_VIDEO_IN, read_mode);
@@ -176,14 +229,14 @@ begin
         loop
             -- Wait for clock cycle
             wait until (i_sim_clk'event and i_sim_clk = '1');
-            s_axis_tready <= '1';
+            r_axis_edge_sim_tready <= '1';
             case(state_rfile) is
                 when sIDLE =>
                     -- Reset Signals
-                    m_axis_tlast     <= '0';
-                    m_axis_tvalid    <= '0';
-                    m_axis_tuser_sof <= '0';
-                    m_axis_tdata     <= (others => '0');
+                    r_axis_sim_gamma_tlast     <= '0';
+                    r_axis_sim_gamma_tvalid    <= '0';
+                    r_axis_sim_gamma_tuser_sof <= '0';
+                    r_axis_sim_gamma_tdata     <= (others => '0');
                     v_pixel_counter  := 0;
                     v_line_counter   := 0;
                     v_frame_counter  := 0;
@@ -196,7 +249,7 @@ begin
                     end if;
 
                 when sREAD_LINE =>
-                    m_axis_tdata <= (others => '0');
+                    r_axis_sim_gamma_tdata <= (others => '0');
                     if (not endfile(read_file)) then
                         -- Read line
                         readline(read_file, line_v);
@@ -209,15 +262,15 @@ begin
 
                 when sSEND_SOF =>
                     -- Wait for Tready
-                    if (m_axis_tready = '1') then
+                    if (w_axis_sim_gamma_tready = '1') then
                         -- Read first two bytes
                         read(line_v, char_byte0);
                         read(line_v, char_byte1);
                         -- Set Start of frame signal
-                        m_axis_tuser_sof <= '1';
-                        m_axis_tlast     <= '0';
-                        m_axis_tvalid    <= '1';
-                        m_axis_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
+                        r_axis_sim_gamma_tuser_sof <= '1';
+                        r_axis_sim_gamma_tlast     <= '0';
+                        r_axis_sim_gamma_tvalid    <= '1';
+                        r_axis_sim_gamma_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
                         -- Increment counter
                         v_pixel_counter := v_pixel_counter + 1;
                         v_pixel_index   <= v_pixel_counter;
@@ -228,16 +281,16 @@ begin
 
                 when sSEND_LINE =>
                     --
-                    m_axis_tuser_sof <= '0';
+                    r_axis_sim_gamma_tuser_sof <= '0';
                     -- Read pixel
                     if (v_pixel_counter = C_IMAGE_WIDTH - 1) then
                         -- wait for tready signal
-                        if (m_axis_tready = '1') then
+                        if (w_axis_sim_gamma_tready = '1') then
                             read(line_v, char_byte0);
                             read(line_v, char_byte1);
-                            m_axis_tlast  <= '1';
-                            m_axis_tvalid <= '1';
-                            m_axis_tdata  <= conv_char_to_logic_vector(char_byte1, char_byte0);
+                            r_axis_sim_gamma_tlast  <= '1';
+                            r_axis_sim_gamma_tvalid <= '1';
+                            r_axis_sim_gamma_tdata  <= conv_char_to_logic_vector(char_byte1, char_byte0);
                             v_line_length <= line_v'length;
                             -- Reset pixel counter
                             v_pixel_counter := 0;
@@ -260,12 +313,12 @@ begin
                         end if;
                     else
                         -- wait for tready signal
-                        if (m_axis_tready = '1') then
+                        if (w_axis_sim_gamma_tready = '1') then
                             read(line_v, char_byte0);
                             read(line_v, char_byte1);
-                            m_axis_tvalid <= '1';
-                            m_axis_tlast <= '0';
-                            m_axis_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
+                            r_axis_sim_gamma_tvalid <= '1';
+                            r_axis_sim_gamma_tlast <= '0';
+                            r_axis_sim_gamma_tdata     <= conv_char_to_logic_vector(char_byte1, char_byte0);
                             v_line_length <= line_v'length;
                             -- Increment Pixel counter
                             v_pixel_counter := v_pixel_counter + 1;
@@ -282,9 +335,9 @@ begin
                     end if;
 
                 when sDONE =>
-                    m_axis_tlast <= '0';
-                    m_axis_tvalid <= '0';
-                    m_axis_tdata  <= (others => '0');
+                    r_axis_sim_gamma_tlast <= '0';
+                    r_axis_sim_gamma_tvalid <= '0';
+                    r_axis_sim_gamma_tdata  <= (others => '0');
                     report "Video stream is done";
                     exit;
 
@@ -311,7 +364,7 @@ begin
         variable v_frame_counter : integer;
         variable v_pixel_counter : integer;
     begin
-        s_axis_tready <= '1';
+        r_axis_edge_sim_tready <= '1';
         v_frame_counter := 0;
         v_pixel_counter := 0;
         -- Open File
@@ -319,16 +372,16 @@ begin
         loop
             -- Wait for clock cycle
             wait until (i_sim_clk'event and i_sim_clk = '1');
-            if (s_axis_tvalid = '1' and s_axis_tready = '1') then
-                if (s_axis_tdata(7 downto 0) = x"0A") then
+            if (w_axis_edge_sim_tvalid = '1' and r_axis_edge_sim_tready = '1') then
+                if (w_axis_edge_sim_tdata(7 downto 0) = x"0A") then
                     write(v_oline, conv_std_logic_vector_to_char(x"0B"));
                 else
-                    write(v_oline, conv_std_logic_vector_to_char(s_axis_tdata(7 downto 0)));
+                    write(v_oline, conv_std_logic_vector_to_char(w_axis_edge_sim_tdata(7 downto 0)));
                 end if;
-                if (s_axis_tdata(15 downto 8) = x"0A") then
+                if (w_axis_edge_sim_tdata(15 downto 8) = x"0A") then
                     write(v_oline, conv_std_logic_vector_to_char(x"0B"));
                 else
-                    write(v_oline, conv_std_logic_vector_to_char(s_axis_tdata(15 downto 8)));
+                    write(v_oline, conv_std_logic_vector_to_char(w_axis_edge_sim_tdata(15 downto 8)));
                 end if;
                 -- Pixel Counter
                 if (v_pixel_counter = 127) then
@@ -357,6 +410,36 @@ begin
         o_count   => counter
     );
 
+    --Gamma Correction
+    gamma_lut_u0 :gamma_lut
+    generic map(
+        C_INIT_FILE   => C_GAMMA_LUT,
+        C_PIXEL_WIDTH => 16,
+        C_GAMMA_WIDTH => 8
+    ) port map (
+        -- Clock/Reset
+        s_axis_aclk    => i_sim_clk,
+        s_axis_aresetn => i_sim_aresetn,
+        -- Configure LUT
+        i_lut_wdata      => r_lut_wdata,
+        o_lut_rdata      => r_lut_rdata,
+        i_lut_addr       => r_lut_addr,
+        i_lut_enable     => r_lut_enable,
+        i_lut_wren       => r_lut_wren,
+        -- Video In - YUV422
+        s_axis_tdata     => r_axis_sim_gamma_tdata,
+        s_axis_tvalid    => r_axis_sim_gamma_tvalid,
+        s_axis_tready    => w_axis_sim_gamma_tready,
+        s_axis_tuser_sof => r_axis_sim_gamma_tuser_sof,
+        s_axis_tlast     => r_axis_sim_gamma_tlast,
+        -- Video out - YUV422
+        m_axis_tdata     => w_axis_gamma_edge_tdata,
+        m_axis_tvalid    => w_axis_gamma_edge_tvalid,
+        m_axis_tready    => w_axis_gamma_edge_tready,
+        m_axis_tuser_sof => w_axis_gamma_edge_tuser_sof,
+        m_axis_tlast     => w_axis_gamma_edge_tlast
+    );
+
     edge_enhance :edge_enhancement_v1_0
         generic map (
             -- Users to add parameters here
@@ -367,18 +450,18 @@ begin
             i_axis_aclk     => i_sim_clk,
             i_axis_aresetn  => i_sim_aresetn,
             -- Video In - YUV422
-            s_axis_tdata     => m_axis_tdata,
-            s_axis_tvalid    => m_axis_tvalid,
-            s_axis_tready    => m_axis_tready,
-            s_axis_tuser_sof => m_axis_tuser_sof,
-            s_axis_tlast     => m_axis_tlast,
+            s_axis_tdata     => w_axis_gamma_edge_tdata,
+            s_axis_tvalid    => w_axis_gamma_edge_tvalid,
+            s_axis_tready    => w_axis_gamma_edge_tready,
+            s_axis_tuser_sof => w_axis_gamma_edge_tuser_sof,
+            s_axis_tlast     => w_axis_gamma_edge_tlast,
 
             -- Video out - YUV 422
-            m_axis_tdata     => s_axis_tdata,
-            m_axis_tvalid    => s_axis_tvalid,
-            m_axis_tready    => s_axis_tready,
-            m_axis_tuser_sof => s_axis_tuser_sof,
-            m_axis_tlast     => s_axis_tlast,
+            m_axis_tdata     => w_axis_edge_sim_tdata,
+            m_axis_tvalid    => w_axis_edge_sim_tvalid,
+            m_axis_tready    => r_axis_edge_sim_tready,
+            m_axis_tuser_sof => w_axis_edge_sim_tuser_sof,
+            m_axis_tlast     => w_axis_edge_sim_tlast,
 
             -- Control Registers
             i_reg_matrix_select => w_reg_matrix_select,

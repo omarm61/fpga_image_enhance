@@ -3,6 +3,7 @@
 #radix symbolic
 radix hex
 
+
 #when -label a {v_line_index == 10} {puts "v_line_index = [examine v_line_index]"}
 
 # Functions
@@ -36,10 +37,10 @@ proc verify_test {err msg} {
 }
 
 # Configure module
-force  w_reg_matrix_select 1
-force  w_reg_grayscale_en  1
+force  w_reg_matrix_select 0
+force  w_reg_grayscale_en  0
 force  w_reg_kernel_bypass 0
-force  w_reg_kernel_gain   16#4
+force  w_reg_kernel_gain   16#9
 
 # setup an oscillator on the CLK input
 force i_sim_clk 1 50 ns -r 100 ns

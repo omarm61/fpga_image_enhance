@@ -3,13 +3,15 @@
 # Simulation Direcotry
 SIM_DIR="sim"
 TB_DIR="tb"
+SCRIPT_DIR="scripts"
 
 # RTL directories
 INCLUDE_RTL= ../rtl/counter_add.vhd \
 			 ../rtl/edge_enhancement_1.0/hdl/edge_enhancement_v1_0.vhd \
 			 ../rtl/edge_enhancement_1.0/src/dsp48_wrap.vhd \
 			 ../rtl/edge_enhancement_1.0/src/kernel_matrix.vhd \
-			 ../rtl/edge_enhancement_1.0/src/shift_register.vhd
+			 ../rtl/edge_enhancement_1.0/src/shift_register.vhd \
+			 ../rtl/gamma_lut/gamma_lut.vhd
 
 # TB direcotry
 INCLUDE_TB=../tb/tb_fpga.vhd
@@ -30,6 +32,10 @@ WAVE_DO=wave.do
 
 ifneq ($(GUI), 1)
 	VSIM_OPT += -batch
+endif
+
+ifeq ($(GAMMA), )
+	GAMMA=1.4
 endif
 
 
@@ -71,8 +77,12 @@ waves :
 
 ## stim: generate stimulus input video file
 stim :
-	cd ${TB_DIR}; \
+	cd ${SCRIPT_DIR}; \
 	python2 generate_stimulus.py -o ../${SIM_DIR}/video_in_sim.txt
+
+plot_lut :
+	cd ${SCRIPT_DIR}; \
+	python3 plot_lut.py -g ${GAMMA}
 
 ## conv: generate yuv file
 conv :
