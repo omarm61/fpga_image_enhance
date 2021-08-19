@@ -1,5 +1,3 @@
-
-
 # Simulation Direcotry
 SIM_DIR="sim"
 TB_DIR="tb"
@@ -39,7 +37,7 @@ ifeq ($(GAMMA), )
 endif
 
 
-ifneq (,$(wildcard ./sim/${WAVE_DO}))
+ifneq (,$(wildcard ./sim/$(WAVE_DO)))
 	WAVE_OPT = "view signal list wave; radix hex; source wave.do"
 else
 	WAVE_OPT = "view signal list wave; radix hex"
@@ -55,49 +53,49 @@ endif
 
 ## setup: Copies xilinx simulation library and configure simulation directory
 setup : stim
-	cd ${SIM_DIR}; \
-	cp ${XILINX_LIB}/modelsim.ini .; \
+	cd $(SIM_DIR); \
+	cp $(XILINX_LIB)/modelsim.ini .; \
 	vlib work; \
 	vmap work work
 
 ## compile: compiles the RTL code (NOTE: The files are recompiled before every simulation run)
 compile :
-	cd ${SIM_DIR}; \
-	vcom ${INCLUDE_RTL} ${INCLUDE_TB}
+	cd $(SIM_DIR); \
+	vcom $(INCLUDE_RTL) $(INCLUDE_TB)
 
 ## sim: run simulation
 sim : compile
-	cd ${SIM_DIR}; \
-	vsim ${VSIM_OPT} tb_fpga
+	cd $(SIM_DIR); \
+	vsim $(VSIM_OPT) tb_fpga
 
 ## waves: Open wave files
 waves :
-	cd ${SIM_DIR}; \
-	vsim -view output.wlf -do ${WAVE_OPT}
+	cd $(SIM_DIR); \
+	vsim -view output.wlf -do $(WAVE_OPT)
 
 ## stim: generate stimulus input video file
 stim :
-	cd ${SCRIPT_DIR}; \
-	python2 generate_stimulus.py -o ../${SIM_DIR}/video_in_sim.txt
+	cd $(SCRIPT_DIR); \
+	python2 generate_stimulus.py -o ../$(SIM_DIR)/video_in_sim.txt
 
 plot_lut :
-	cd ${SCRIPT_DIR}; \
-	python3 plot_lut.py -g ${GAMMA}
+	cd $(SCRIPT_DIR); \
+	python3 plot_lut.py -g $(GAMMA)
 
 ## conv: generate yuv file
 conv :
-	cd ${SIM_DIR}; \
+	cd $(SIM_DIR); \
 	rm video_out.yuv; \
 	cat ./video_out_sim.txt | tr -d "\n" >> ./video_out.yuv
 
 ## play: play the generated video
 play : conv
-	cd ${SIM_DIR}; \
+	cd $(SIM_DIR); \
 	ffplay -f rawvideo -pixel_format yuyv422  -video_size 128x144 video_out.yuv
 
 ## clean: remove all generated files in /sim directory
 clean :
-	cd ${SIM_DIR}; \
+	cd $(SIM_DIR); \
 	rm -rf !("myfile"|"stim.do");
 
 help: makefile
