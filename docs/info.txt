@@ -1,0 +1,45 @@
+
+
+
+# Installing ModelSim
+
+[ref] https://profile.iiita.ac.in/bibhas.ghoshal/COA\_2020/Lab/ModelSim%20Linux%20installation.html
+
+
+1) Install Modelsim from the Intel website. you will require the following two files (NOTE: The version might be different):
+    - modelsim\_part2-21.2.0.72-linux.qdz
+    - ModelSimProSetup-21.2.0.72-linux.run
+
+2) Run ````./ModelSimProSetup-21.2.0.72-linux.run```` and follow the steps to install the tools
+
+3) Export the modelsim tool in your PATH environment variable. You can the following function in your .bashrc file:
+
+```bash
+# Add Modelsim to PATH
+if [[ :$PATH: != *:"/tools/intelFPGA_pro/21.2/modelsim_ase/bin":* ]] ; then
+    export PATH=$PATH:/tools/intelFPGA_pro/21.2/modelsim_ase/bin
+fi
+```
+
+4) Modelsim Requires 32bit libraries. Add the following libraries to the system:
+
+```console
+sudo dpkg --add-architecture i386
+sudo apt-get update
+sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
+sudo apt-get install libxft2:i386
+sudo apt-get install lib32z1 lib32ncurses6 libbz2-1.0
+sudo apt-get install libxext6
+```
+
+Now you should be able to run ````vsim````.
+
+** NOTE: ** Vivado is dependent on the modelsim version. You will need to acquire the correct modelsim version to be able to generate the simulation libraries with vivado.
+
+
+** EXTRA: **
+
+```console
+ffmpeg -i harbour_cif.y4m -pix_fmt yuyv422 -s:v 128x144 test.yuv
+ffplay -f rawvideo -pixel_format yuyv422 -video_size 128x144 test.yuv
+```

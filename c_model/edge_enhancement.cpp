@@ -1,21 +1,45 @@
+#include <opencv2/opencv.hpp>
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <unistd.h>
 #include <math.h>
-#include <opencv2/opencv.hpp>
 
 using namespace cv;
 using namespace std;
 
-#define  FRAME_WIDTH   128
-#define  FRAME_HEIGHT  144
+#define  FRAME_WIDTH_DEFAULT        128
+#define  FRAME_HEIGHT_DEFAULT       144
+#define  GAMMA_RATIO_DEFAULT        1.4
+
+int c;
+struct arg_t {
+    char *InFile;
+    int frame_width    = FRAME_WIDTH_DEFAULT;
+    int frame_height   = FRAME_HEIGHT_DEFAULT;
+    bool verbose       = 0;
+    float gamma        = GAMMA_RATIO_DEFAULT;
+};
+
+void printhelp() {
+    cout << "praw -i <Input Image> -s <WidthxHeight>" << endl;
+    cout << "-i:     Input video" << endl;
+    cout << "-s:     frame dimensions. (default= 128x144)" << endl;
+    cout << "-v:     verbose" << endl;
+    cout << "-h:     Help" << endl;
+}
 
 int main (int argc, char** argv)
 {
+    struct arg_t arg;
+    const string s_delim = "x";
+    string s_dim;
+    string s_width;
+    string s_height;
+    int frame_width;
+    int frame_height;
     //Mat frame;
     Mat frame_proc;
-    Mat inFrame(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC2);
     vector <Mat> frame_proc_ch;
     double fps;
     double dWidth;
@@ -26,9 +50,46 @@ int main (int argc, char** argv)
     int dim(256);
     Mat lut(1, &dim, CV_8U);
 
+    // Parse Input Arguments
+    while ((c = getopt (argc, argv, "hvi:s:g:")) != EOF)
+    switch(c)
+    {
+        case 'i':
+            arg.InFile = optarg;
+            break;
+        case 's':
+            s_dim = optarg;
+            // Parse frame dimensions string
+            s_width  = s_dim.substr(0, s_dim.find(s_delim)); // Extract width
+            s_dim    = s_dim.erase(0, s_dim.find(s_delim) + s_delim.length());
+            s_height = s_dim;
+            // Convert string to integer
+            arg.frame_width  = stoi(s_width);
+            arg.frame_height = stoi(s_height);
+            break;
+        case 'g':
+            arg.gamma = stof(optarg);
+            break;
+        case 'v':
+            arg.verbose = 1;
+            break;
+        case 'h':
+            printhelp();
+            //goto ExitProgram;
+            break;
+    }
 
-    char yuv1D_in[FRAME_WIDTH*FRAME_HEIGHT*2];
-    ifstream inputFile("foreman_128x144.yuv", ios::binary);
+
+    if (arg.verbose) {
+        cout << "Input File: "  << arg.InFile << endl;
+        cout << "Image Width: " << arg.frame_width << endl;
+        cout << "Image Height: " << arg.frame_height << endl;
+        cout << "Gamma Ratio: " << arg.gamma << endl;
+    }
+
+    char yuv1D_in[arg.frame_width*arg.frame_height*2];
+    Mat inFrame(arg.frame_height, arg.frame_width, CV_8UC2);
+    ifstream inputFile(arg.InFile, ios::binary);
     ofstream outputFile("c_edge_enhancement.yuv", ios::binary);
 
     float kdata[] = {-1, -1, -1,
@@ -42,7 +103,7 @@ int main (int argc, char** argv)
 
     // Generate LUT
     for (int i=0; i<256; i++) {
-        lut_value = 255.0 * pow((i/255.0), (1.4));
+        lut_value = 255.0 * pow((i/255.0), (arg.gamma));
         lut.at<char>(i)= (int)lut_value;
     }
 
@@ -61,7 +122,7 @@ int main (int argc, char** argv)
             inputFile.read(yuv1D_in, sizeof(yuv1D_in));
         }
 
-        inFrame = Mat(FRAME_HEIGHT, FRAME_WIDTH, CV_8UC2, yuv1D_in);
+        inFrame = Mat(arg.frame_height, arg.frame_width, CV_8UC2, yuv1D_in);
         split(inFrame, frame_proc_ch);
         //cvtColor(inFrame, inFrame, cv::COLOR_YUV2BGR_YUYV);
 
@@ -106,6 +167,11 @@ int main (int argc, char** argv)
     inputFile.close();
     outputFile.close();
     return 0;
+
+//ExitProgram:
+//    if (arg.verbose)
+//        cout << "\nDone\n";
+
 }
 
 
