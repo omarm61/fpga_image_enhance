@@ -9,7 +9,7 @@ sim/stim.do
 c_model/Makefile
 c_model/CMakeCache.txt
 c_model/CMakeFiles/
-c_model/EdgeEnhancement
+c_model/esharp
 c_model/c_edge_enhancement.yuv
 c_model/cmake_install.cmake
 
