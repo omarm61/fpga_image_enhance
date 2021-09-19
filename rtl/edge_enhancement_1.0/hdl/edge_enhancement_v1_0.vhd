@@ -282,75 +282,75 @@ begin
 --	);
 
 
-	-- Buffer two lines using four shift registers
-	-- Shift Register half a line
-	ram_shift1_inst :shift_register       -- Line 1
-		generic map (
-			DATA_WIDTH => 19,
-			DEPTH      => (NUM_PIXELS -1)
-		)
-		port map(
-			i_aclk       => i_axis_aclk,
-			i_aresetn    => i_axis_aresetn,
-			i_enable     => w_shift_wen,
-			i_data_in    => w_shift_line1_data_in,
-			o_data_out   => w_shift_line1_data_out,
-			o_data_valid => w_shift_line1_data_valid
-		);
+    -- Buffer two lines using four shift registers
+    -- Shift Register half a line
+    ram_shift1_inst :shift_register       -- Line 1
+    generic map (
+        DATA_WIDTH => 19,
+        DEPTH      => (NUM_PIXELS -1)
+    )
+    port map(
+        i_aclk       => i_axis_aclk,
+        i_aresetn    => i_axis_aresetn,
+        i_enable     => w_shift_wen,
+        i_data_in    => w_shift_line1_data_in,
+        o_data_out   => w_shift_line1_data_out,
+        o_data_valid => w_shift_line1_data_valid
+    );
 
-	ram_shift2_inst :shift_register
-		generic map (
-			DATA_WIDTH => 11,
-			DEPTH      => (NUM_PIXELS -1)
-		)
-		port map(
-			i_aclk       => i_axis_aclk,
-			i_aresetn    => i_axis_aresetn,
-			i_enable     => w_shift_wen,
-			i_data_in    => w_shift_line2_data_in,
-			o_data_out   => w_shift_line2_data_out,
-			o_data_valid => open
-		);
+    ram_shift2_inst :shift_register
+    generic map (
+        DATA_WIDTH => 11,
+        DEPTH      => (NUM_PIXELS -1)
+    )
+    port map(
+        i_aclk       => i_axis_aclk,
+        i_aresetn    => i_axis_aresetn,
+        i_enable     => w_shift_wen,
+        i_data_in    => w_shift_line2_data_in,
+        o_data_out   => w_shift_line2_data_out,
+        o_data_valid => open
+    );
 
-	-- short shift register to lineup incoming data with the kernel output
-	ram_shift4_inst :shift_register     -- Line 2
-		generic map (
-			DATA_WIDTH => 11,           -- Tuser,tlast, and 8-bit data (cb/cr)
-			DEPTH      => 7
-		)
-		port map(
-			i_aclk       => i_axis_aclk,
-			i_aresetn    => i_axis_aresetn,
-			i_enable     => w_shift_wen,
-			i_data_in    => w_shift_kernel_data_in,
-			o_data_out   => w_shift_kernel_data_out,
-			o_data_valid => w_shift_line1_data_valid
-		);
+        -- short shift register to lineup incoming data with the kernel output
+    ram_shift3_inst :shift_register     -- Line 2
+    generic map (
+        DATA_WIDTH => 11,           -- Tuser,tlast, and 8-bit data (cb/cr)
+        DEPTH      => 7
+    )
+    port map(
+        i_aclk       => i_axis_aclk,
+        i_aresetn    => i_axis_aresetn,
+        i_enable     => w_shift_wen,
+        i_data_in    => w_shift_kernel_data_in,
+        o_data_out   => w_shift_kernel_data_out,
+        o_data_valid => w_shift_line1_data_valid
+    );
 
 
-	-- 3x3 Kernel
-	kernel_3x3_inst :kernel_matrix
-		generic map(
-			-- Parameters
-			NUM_LINES	=> NUM_LINES
-		)
-		port map(
-			-- Users to add ports here
+        -- 3x3 Kernel
+    kernel_3x3_inst :kernel_matrix
+    generic map(
+            -- Parameters
+        NUM_LINES	=> NUM_LINES
+    )
+    port map(
+            -- Users to add ports here
 
-			i_aclk           => i_axis_aclk,
-			i_aresetn        => i_axis_aresetn,
-			i_enable         => w_kernel_enable,
-			-- Control
-			i_matrix_select  => i_reg_matrix_select,     -- FIXME: w_kernel_matrix_select,
-			i_gain           => i_reg_kernel_gain,       -- FIXME: w_kernel_gain,
-			-- Video in
-			i_video_l0       => w_kernel_video_l0,       -- Video in Line 1 - Y Luminance
-			i_video_l1       => w_kernel_video_l1,       -- Video in Line 2 - Y Luminance
-			i_video_l2       => w_kernel_video_l2,       -- Video in Line 3 - Y Luminance
-			i_axis_tlast     => w_kernel_axis_tlast,     -- End of a line - Center line
-			i_axis_tuser_sof => w_kernel_axis_tuser_sof, -- Start of a new frame - Center line
-			-- Video out
-			o_video          => w_kernel_video_out
-		);
+        i_aclk           => i_axis_aclk,
+        i_aresetn        => i_axis_aresetn,
+        i_enable         => w_kernel_enable,
+            -- Control
+        i_matrix_select  => i_reg_matrix_select,     -- FIXME: w_kernel_matrix_select,
+        i_gain           => i_reg_kernel_gain,       -- FIXME: w_kernel_gain,
+                                                     -- Video in
+        i_video_l0       => w_kernel_video_l0,       -- Video in Line 1 - Y Luminance
+        i_video_l1       => w_kernel_video_l1,       -- Video in Line 2 - Y Luminance
+        i_video_l2       => w_kernel_video_l2,       -- Video in Line 3 - Y Luminance
+        i_axis_tlast     => w_kernel_axis_tlast,     -- End of a line - Center line
+        i_axis_tuser_sof => w_kernel_axis_tuser_sof, -- Start of a new frame - Center line
+                                                     -- Video out
+        o_video          => w_kernel_video_out
+    );
 
 end arch_imp;

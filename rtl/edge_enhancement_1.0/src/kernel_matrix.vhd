@@ -69,14 +69,14 @@ architecture RTL of kernel_matrix is
 	alias  w_dsp_s3_b  : std_logic_vector (17 downto 0) is  w_dsp_s3_ab(17 downto 0);
 	--
 	signal w_dsp_s3_c : std_logic_vector (47 downto 0); -- In
-	-- 
+	--
 	signal w_dsp_s3_p : std_logic_vector (47 downto 0); -- Out
 
 	-- Stage 4 - Mutliplication and subtraction - P = (B*A) - C
 	signal w_dsp_s4_a : std_logic_vector (29 downto 0); -- In
 	signal w_dsp_s4_b : std_logic_vector (17 downto 0); -- In
 	signal w_dsp_s4_c : std_logic_vector (47 downto 0); -- In
-	-- 
+	--
 	signal w_dsp_s4_p      : std_logic_vector (47 downto 0); -- Out
 	--
 
@@ -179,7 +179,7 @@ begin
 
 	  	pxl_mask_fsm <= sIDLE;
 	  	o_video <= (others => '0');
-	    
+
 	  elsif (i_aclk'event and i_aclk = '1') then
 
 	  		-- Center pixel Gain
@@ -191,7 +191,7 @@ begin
 	  	-- Convolution zero padding
 	  	-- check if the matrix need zero padding for the four coreners of the frame
 	  	-- Start of a frame
-	  	if (i_enable = '1') then	
+	  	if (i_enable = '1') then
 	  		-- Output video
 	  		r_pixel_overflow <= r_mat_m11_mask_ddd;
 	  		if (i_matrix_select = '1') then
@@ -213,8 +213,8 @@ begin
 	  			--else
 	  			--	o_video <= r_pixel_overflow;
 	  			--end if;
-	  		end if;	
-	  		
+	  		end if;
+
 	  		r_mat_m02 <= i_video_l2;
 	  		r_mat_m01 <= r_mat_m02;
 	  		r_mat_m00 <= r_mat_m01;
@@ -241,9 +241,9 @@ begin
 	  			r_first_line <= '0';
 	  			-- Check if its the last line
 	  			if (r_line_counter >= NUM_LINES - 2) then
-	  				r_last_line <= '1';	
+	  				r_last_line <= '1';
 	  			else
-	  				r_last_line <= '0';			
+	  				r_last_line <= '0';
 	  			end if;
 	  			-- Check if it's one of the right corners
 	  			if (r_first_line = '1') then
@@ -253,16 +253,16 @@ begin
 	  				pxl_mask_fsm <= sC11;       -- Bottom right corner
 				else
 					--pxl_mask_fsm <= sLAST_PIXEL; -- Last pixel of a line
-					pxl_mask_fsm <= sIDLE;	
+					pxl_mask_fsm <= sIDLE;
 	  			end if;
-	  			-- 
+	  			--
 	  		else
 	  			r_new_line <= '0';
 	  			if (r_first_line = '1') then
 	  				pxl_mask_fsm <= sFIRST_LINE;   -- First line
 	  			elsif (r_new_line = '1' and r_last_line = '0') then
 	  				--pxl_mask_fsm <= sFIRST_PIXEL;  -- First pixel of a line
-					pxl_mask_fsm <= sIDLE;	
+					pxl_mask_fsm <= sIDLE;
 	  			elsif (r_new_line = '1' and r_last_line = '1') then
 	  				pxl_mask_fsm <= sC10;          -- Bottom left corner
 	  			elsif (r_new_line = '0' and r_last_line = '1') then
@@ -295,7 +295,7 @@ begin
 	  			r_mat_m21_mask <= r_mat_m21;
 	  			r_mat_m22_mask <= r_mat_m22;
 
-	  		when sC00 => 
+	  		when sC00 =>
 	  			-- Left top corner, Start of Frame
 	  			-- Top line and left pixels are zeros
 	  			r_mat_m00_mask <= (others => '0');
@@ -310,7 +310,7 @@ begin
 	  			r_mat_m21_mask <= r_mat_m21;
 	  			r_mat_m22_mask <= r_mat_m22;
 
-	  		when sFIRST_LINE => 
+	  		when sFIRST_LINE =>
 	  			-- Top line
 	  			r_mat_m02_mask <= (others => '0');
 	  			r_mat_m01_mask <= (others => '0');
@@ -324,7 +324,7 @@ begin
 	  			r_mat_m11_mask <= r_mat_m11;  -- Center pixel
 	  			r_mat_m10_mask <= r_mat_m10;
 
-	  		when sC01 => 
+	  		when sC01 =>
 	  			-- Right top corner
 	  			r_mat_m00_mask <= (others => '0');
 	  			r_mat_m01_mask <= (others => '0');
@@ -482,7 +482,7 @@ begin
 	-- Stage two - Addition
 	DSP48E1_stage2_inst : entity work.dsp48_wrap
 	generic map (
-	    PREG => 1,			-- Pipeline stages for P (0 or 1)
+	    PREG => 1,			    -- Pipeline stages for P (0 or 1)
 	    USE_SIMD => "TWO24" )	-- SIMD selection ("ONE48", "TWO24", "FOUR12")
 	port map (
 	    CLK     => i_aclk,         -- 1-bit input: Clock input
@@ -503,7 +503,7 @@ begin
 		RSTALUMODE    => w_dsp_reset,
 		RSTCTRL       => w_dsp_reset,
 	    --
-	    P => w_dsp_s2_p,			-- 48-bit output: Primary data output
+	    P => w_dsp_s2_p,    -- 48-bit output: Primary data output
 	    CARRYOUT => open );	-- 4-bit carry output
 
 	-- P = A:B + C
@@ -548,17 +548,17 @@ begin
 
 	w_dsp_s4_c <= w_dsp_s3_p; -- Two's compliment, sum of neighbouring pixels
 
-	-- Stage four - Multiplication, Subtraction = (Gain * Center pixel) - neighbouring pixels 
+	-- Stage four - Multiplication, Subtraction = (Gain * Center pixel) - neighbouring pixels
     -- P[47:0] = (gain * M11) - S3_0
     DSP48E1_stage4_inst : entity work.dsp48_wrap
 	generic map (
 	    PREG => 1,				        -- Pipeline stages for P (0 or 1)
 	    USE_MULT => "MULTIPLY",
 	    USE_DPORT => TRUE,
-	    MASK => x"000000000000",		-- 48-bit mask value for pattern detect
-	    SEL_PATTERN => "PATTERN",			    -- Select pattern value ("PATTERN" or "C")
+	    MASK => x"000000000000",		    -- 48-bit mask value for pattern detect
+	    SEL_PATTERN => "PATTERN",			-- Select pattern value ("PATTERN" or "C")
 	    USE_PATTERN_DETECT => "NO_PATDET",	-- ("PATDET" or "NO_PATDET")
-	    USE_SIMD => "ONE48" )		    -- SIMD selection ("ONE48", "TWO24", "FOUR12")
+	    USE_SIMD => "ONE48" )		        -- SIMD selection ("ONE48", "TWO24", "FOUR12")
 	port map (
 	    CLK       => i_aclk,            -- 1-bit input: Clock input
 	    A         => w_dsp_s4_a,        -- M11
@@ -566,7 +566,7 @@ begin
 	    C         => w_dsp_s4_c,        -- S3_0
 	    INMODE    => "00000",
 	    OPMODE    => "0110101",         -- 7-bit input: Operation mode input
-	    ALUMODE   => "0001",			-- 7-bit input: Operation mode input -- 
+	    ALUMODE   => "0001",			-- 7-bit input: Operation mode input --
 	    CARRYIN   => '0',			    -- 1-bit input: Carry input signal
 	    CEC       => r_dsp_cen,
 	    CECARRYIN => r_dsp_cen,
@@ -586,8 +586,8 @@ begin
 		RSTCTRL       => w_dsp_reset,
 		RSTALLCARRYIN => w_dsp_reset,
 	    --
-	    PATTERNDETECT => open,		-- Match indicator P[47:0] with pattern
-	    P             => w_dsp_s4_p);			-- 48-bit output: Primary data output
+	    PATTERNDETECT => open,		  -- Match indicator P[47:0] with pattern
+	    P             => w_dsp_s4_p); -- 48-bit output: Primary data output
 
 
 

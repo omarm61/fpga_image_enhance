@@ -92,7 +92,7 @@ begin
     m_axis_tuser_sof <= r_axis_tuser_sof_d;
     m_axis_tlast     <= r_axis_tlast_d;
 
-    -- 2 Clock cycle delay
+    -- 1 Clock cycle delay
     stream_delay : process (s_axis_aclk, s_axis_aresetn)
     begin
         if (s_axis_aresetn = '0') then

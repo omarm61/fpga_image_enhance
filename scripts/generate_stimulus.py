@@ -2,7 +2,7 @@
 import sys, getopt
 
 def help():
-    print ('add_newline.py -i <InputFile> -o <OutputFile> -w <LineWidth>')
+    print ('generate_stimulus.py -i <InputFile> -o <OutputFile> -w <LineWidth>')
 
 
 def main(argv):
@@ -31,8 +31,8 @@ def main(argv):
 
 
     # Open File
-    video_in  = open(file_in, 'r')
-    video_out = open(file_out, 'w')
+    video_in  = open(file_in, 'r', encoding="ISO-8859-1")
+    video_out = open(file_out, 'w', encoding="ISO-8859-1")
 
     # Read input file character by character
     while True:
