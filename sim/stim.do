@@ -4,9 +4,9 @@
 radix hex
 
 
-#when -label a {v_line_index == 10} {puts "v_line_index = [examine v_line_index]"}
-
 # Functions
+
+# Counter monitor
 proc proc_wait_for_counter {signal count} {
     puts "Wait for signal"
         set temp_prev 0
