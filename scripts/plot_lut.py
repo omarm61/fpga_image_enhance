@@ -24,7 +24,7 @@ def main(argv):
 
     # Create the vectors X and Y
     x = np.array(range(256))
-    y = (255 * (x/255) ** (gamma))
+    y = x+2*(255 * (x/255) ** (gamma))
 
     # Create the plot
     plt.plot(x[0:255],y[0:255])
