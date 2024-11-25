@@ -42,6 +42,12 @@ Running the simulation:
 
 You can also display the waveform by running ```` make waves ```` or run in GUI mode using the command ```` make sim GUI=1 ````
 
+### Testbench Architecture
+
+The video is converted to text file and fed through the modules using AXI-Stream interface.
+
+![TB Architecture](docs/tb_architecture.png "Testbench Architecutre")
+
 
 ### Gamma Correction Curve
 
@@ -53,14 +59,15 @@ Gamma LUT:
 
 ### Sharpening Kernel
 
-The following kernel matrix i sused to sharpen the image:
+The following kernel matrix is used to sharpen the image:
 
 $$
-\begin{pmatrix}
+Kernel = 
+\begin{bmatrix}
 0 & -1 & 0 \\
 -1 & 5 & -1 \\
 0 & -1 & 0
-\end{pmatrix}
+\end{bmatrix}
 $$
 
 ### NOTES:
