@@ -21,7 +21,7 @@ The following are list of tools required to run the project
 + Make
 + Cmake
 
-Generate vivado libraries and install in ````/opt/xilinx_sim_lib/```` directory.
+Generate vivado simulation libraries for modelsim and install in ````/opt/xilinx_sim_lib/```` directory.
 
 ## Getting Started
 
@@ -36,11 +36,11 @@ The following are the steps to compile the opencv model:
 ### Modelsim Simulation
 Running the simulation:
 
-- Clean and setup the directory (```` make clean setup ````)
-- Run the simulation (```` make sim ````)
-- Play the output video (```make play```)
+1) Clean and setup the directory (```` make clean setup ````)
+2) Run the simulation (```` make sim ````)
+3) Play the output video (```make play```)
 
-you can also display the waveform by running ```` make waves ```` or run in GUI mode using the command ```` make sim GUI=1 ````
+You can also display the waveform by running ```` make waves ```` or run in GUI mode using the command ```` make sim GUI=1 ````
 
 
 ### Gamma Correction Curve
@@ -51,6 +51,17 @@ Gamma LUT:
 
 ![Gamma Curve](docs/gamma_curve.png "Gamma Curve")
 
+### Sharpening Kernel
+
+The following kernel matrix i sused to sharpen the image:
+
+$$
+\begin{pmatrix}
+0 & -1 & 0 \\
+-1 & 5 & -1 \\
+0 & -1 & 0
+\end{pmatrix}
+$$
 
 ### NOTES:
 
