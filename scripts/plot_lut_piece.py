@@ -20,10 +20,10 @@ y = spline(x)
 
 # Plot the curve
 plt.figure(figsize=(10, 6))
-plt.plot(x, y, label="Custom Curve with Dip", color="blue")
+plt.plot(x, y, label="Gamma Curve", color="blue")
 plt.scatter(x_points, y_points, color="red", label="Control Points")
 plt.plot(x_points, y_points, '--', color="gray", label="Control Polygon")
-plt.title("Custom Curve with a Dip at Midpoint")
+plt.title("Gamma Correction")
 plt.xlabel("Input Intensity (0-255)")
 plt.ylabel("Output Intensity (0-255)")
 plt.grid(True)
