@@ -46,7 +46,9 @@ You can also display the waveform by running ```` make waves ```` or run in GUI 
 
 The video is converted to text file and fed through the modules using AXI-Stream interface.
 
-![TB Architecture](docs/tb_architecture.png "Testbench Architecutre")
+<p align="center">
+  <img src="docs/tb_architecture.png" width=600>
+<p>
 
 
 ### Gamma Correction Curve
@@ -55,7 +57,9 @@ In this example the intensity of brighter pixels is reduced to increase the cont
 
 Gamma LUT:
 
-![Gamma Curve](docs/gamma_curve.png "Gamma Curve")
+<p align="center">
+  <img src="docs/gamma_curve.png" width=600 height=400>
+<p>
 
 ### Sharpening Kernel
 
@@ -70,9 +74,3 @@ Kernel =
 \end{bmatrix}
 $$
 
-### NOTES:
-
-Using FFplay to play raw video:
-```console
-ffplay -f rawvideo -pixel_format yuyv422 -video_size 128x144 -i foreman_128x144.yuv
-```
